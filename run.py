@@ -13,7 +13,7 @@ def main():
     print("Thermo Mass Spec Pressure Analyzer")
     print("=" * 60)
     print("Starting application...")
-    print("Access the application at: http://localhost:5000")
+    print("Access the application at: http://localhost:9847")
     print("Press Ctrl+C to stop the server")
     print("=" * 60)
     
@@ -22,12 +22,8 @@ def main():
         app.run(
             debug=True,
             host='0.0.0.0',
-            port=5000,
-            threaded=True,
-            # Increase timeout for large file uploads
-            request_timeout=3600,  # 1 hour timeout
-            # Enable request buffering for large files
-            request_buffer_size=2 * 1024 * 1024 * 1024  # 2GB buffer
+            port=9847,
+            threaded=True
         )
     except KeyboardInterrupt:
         print("\nShutting down server...")
