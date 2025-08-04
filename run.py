@@ -23,11 +23,7 @@ def main():
             debug=True,
             host='0.0.0.0',
             port=5000,
-            threaded=True,
-            # Increase timeout for large file uploads
-            request_timeout=3600,  # 1 hour timeout
-            # Enable request buffering for large files
-            request_buffer_size=2 * 1024 * 1024 * 1024  # 2GB buffer
+            threaded=True
         )
     except KeyboardInterrupt:
         print("\nShutting down server...")
