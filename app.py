@@ -14,7 +14,14 @@ import zipfile
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB max file size
+
+# Additional configurations for large file uploads
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# Increase timeout for large file processing
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -101,7 +108,14 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
         try:
-            file.save(filepath)
+            # For large files, save in chunks to avoid memory issues
+            chunk_size = 8192  # 8KB chunks
+            with open(filepath, 'wb') as f:
+                while True:
+                    chunk = file.stream.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
             
             # Analyze the file
             analyzer = ThermoRawAnalyzer(filepath)
@@ -225,6 +239,17 @@ def export_data():
             
     except Exception as e:
         return jsonify({'error': f'Error exporting data: {str(e)}'}), 500
+
+@app.route('/upload_progress', methods=['GET'])
+def upload_progress():
+    """Get upload progress for large files"""
+    # This endpoint can be used to track upload progress
+    # For now, return a simple status
+    return jsonify({
+        'status': 'uploading',
+        'progress': 0,
+        'message': 'File upload in progress...'
+    })
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup_files():

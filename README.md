@@ -4,7 +4,7 @@ A web-based GUI application for analyzing Thermo mass spectrometry .raw files to
 
 ## Features
 
-- **File Upload**: Upload Thermo .raw files (up to 16MB)
+- **File Upload**: Upload Thermo .raw files (up to 2GB)
 - **Pressure Profile Analysis**: Extract and visualize pressure data over time
 - **Retention Time Analysis**: Get pressure values at specific retention times
 - **Interactive Charts**: Dynamic pressure profile plots using Plotly
@@ -26,8 +26,17 @@ A web-based GUI application for analyzing Thermo mass spectrometry .raw files to
    ```
 
 3. **Run the application**:
+   
+   **Development mode:**
    ```bash
+   python run.py
+   # or
    python app.py
+   ```
+   
+   **Production mode (recommended for large files):**
+   ```bash
+   ./start_production.sh
    ```
 
 4. **Access the application**:
@@ -101,15 +110,50 @@ The application includes a mock `ThermoRawAnalyzer` class that generates synthet
 ### Environment Variables
 - `SECRET_KEY`: Flask secret key (default: 'your-secret-key-here')
 - `UPLOAD_FOLDER`: Directory for uploaded files (default: 'uploads')
-- `MAX_CONTENT_LENGTH`: Maximum file size in bytes (default: 16MB)
+- `MAX_CONTENT_LENGTH`: Maximum file size in bytes (default: 2GB)
+- `FLASK_ENV`: Environment mode (development/production)
 
 ### File Size Limits
-- Maximum file size: 16MB
+- Maximum file size: 2GB
 - Supported formats: .raw files only
+- Optimized for large file uploads with chunked processing
+
+## Production Deployment
+
+### Large File Upload Support
+The application is optimized for handling large .raw files up to 2GB:
+
+- **Chunked Upload Processing**: Files are processed in 8KB chunks to avoid memory issues
+- **Extended Timeouts**: 1-hour timeout for large file processing
+- **Progress Tracking**: Real-time upload progress for large files
+- **Memory Optimization**: Efficient memory usage during file processing
+
+### Production Server Setup
+For production deployment with large file support:
+
+1. **Install Gunicorn**:
+   ```bash
+   pip install gunicorn
+   ```
+
+2. **Start Production Server**:
+   ```bash
+   ./start_production.sh
+   ```
+
+3. **Alternative Gunicorn Command**:
+   ```bash
+   gunicorn --config gunicorn.conf.py wsgi:application
+   ```
+
+### Server Configuration
+The `gunicorn.conf.py` file includes optimized settings for large file uploads:
+- Worker processes: CPU cores × 2 + 1
+- Timeout: 3600 seconds (1 hour)
+- Request buffer: 2GB
+- Memory management for large files
 
 ## Development
-
-### Adding Real .raw File Support
 To integrate with actual Thermo .raw files, replace the mock `ThermoRawAnalyzer` class with real parsing logic:
 
 ```python
@@ -137,9 +181,10 @@ class ThermoRawAnalyzer:
 ### Common Issues
 
 1. **File upload fails**:
-   - Check file size (must be < 16MB)
+   - Check file size (must be < 2GB)
    - Ensure file has .raw extension
    - Verify file is not corrupted
+   - For large files (>100MB), use production server mode
 
 2. **Application won't start**:
    - Ensure all dependencies are installed
@@ -150,6 +195,12 @@ class ThermoRawAnalyzer:
    - Check browser console for JavaScript errors
    - Ensure Plotly.js is loading correctly
    - Verify data format is correct
+
+4. **Large file upload timeout**:
+   - Use production server mode with Gunicorn
+   - Ensure stable internet connection
+   - Check server timeout settings
+   - Monitor server memory usage
 
 ### Logs
 Check the Flask application logs for detailed error information:

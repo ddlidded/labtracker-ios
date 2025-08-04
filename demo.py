@@ -121,12 +121,15 @@ def show_installation_instructions():
     print("1. Install Python dependencies:")
     print("   pip install -r requirements.txt")
     print("\n2. Run the application:")
-    print("   python run.py")
-    print("   # or")
-    print("   python app.py")
+    print("   Development mode:")
+    print("     python run.py")
+    print("     # or")
+    print("     python app.py")
+    print("   Production mode (recommended for large files):")
+    print("     ./start_production.sh")
     print("\n3. Open your browser and navigate to:")
     print("   http://localhost:5000")
-    print("\n4. Upload a .raw file and start analyzing!")
+    print("\n4. Upload a .raw file (up to 2GB) and start analyzing!")
 
 def main():
     """Main demo function."""
@@ -141,7 +144,7 @@ def main():
     show_installation_instructions()
     
     print("\nFeatures:")
-    print("✓ File upload and validation")
+    print("✓ File upload and validation (up to 2GB)")
     print("✓ Pressure profile visualization")
     print("✓ Retention time analysis")
     print("✓ Data export (CSV/Excel)")
@@ -149,6 +152,7 @@ def main():
     print("✓ Responsive web interface")
     print("✓ Interactive charts")
     print("✓ Modern UI design")
+    print("✓ Large file optimization")
 
 if __name__ == '__main__':
     main()

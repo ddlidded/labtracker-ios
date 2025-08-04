@@ -32,9 +32,9 @@ function handleFileSelection(event) {
             return;
         }
         
-        // Validate file size (16MB limit)
-        if (file.size > 16 * 1024 * 1024) {
-            showMessage('File size must be less than 16MB.', 'error');
+        // Validate file size (2GB limit)
+        if (file.size > 2 * 1024 * 1024 * 1024) {
+            showMessage('File size must be less than 2GB.', 'error');
             event.target.value = '';
             return;
         }
@@ -63,10 +63,20 @@ async function handleFileUpload(event) {
     const uploadProgress = document.getElementById('uploadProgress');
     uploadProgress.style.display = 'block';
     
+    // Update progress message for large files
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    const progressText = uploadProgress.querySelector('small');
+    if (fileSizeMB > 100) {
+        progressText.textContent = `Processing large file (${fileSizeMB} MB)... This may take several minutes.`;
+    } else {
+        progressText.textContent = 'Processing file...';
+    }
+    
     try {
         const formData = new FormData();
         formData.append('file', file);
         
+        // For large files, show more detailed progress
         const response = await fetch('/upload', {
             method: 'POST',
             body: formData
@@ -77,14 +87,18 @@ async function handleFileUpload(event) {
         if (result.success) {
             currentFilename = result.filename;
             displayResults(result);
-            showMessage('File uploaded and analyzed successfully!', 'success');
+            showMessage(`File uploaded and analyzed successfully! (${fileSizeMB} MB)`, 'success');
         } else {
             showMessage(result.error || 'Upload failed.', 'error');
         }
         
     } catch (error) {
         console.error('Upload error:', error);
-        showMessage('An error occurred during upload. Please try again.', 'error');
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            showMessage('Upload timeout or connection error. For large files, please ensure stable internet connection.', 'error');
+        } else {
+            showMessage('An error occurred during upload. Please try again.', 'error');
+        }
     } finally {
         // Reset loading state
         uploadBtn.innerHTML = originalText;
