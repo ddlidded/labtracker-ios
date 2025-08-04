@@ -1,0 +1,11 @@
+Flask==2.3.3
+pymzml==2.5.0
+thermo-raw-reader==1.0.0
+numpy==1.24.3
+pandas==2.0.3
+plotly==5.17.0
+dash==2.14.2
+dash-bootstrap-components==1.4.1
+werkzeug==2.3.7
+python-dotenv==1.0.0
+openpyxl==3.1.2
