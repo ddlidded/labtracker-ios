@@ -130,18 +130,41 @@ function displayResults(result) {
 }
 
 function displaySummaryStats(summary) {
+    console.log('displaySummaryStats called with:', summary);
+    
     const summaryStats = document.getElementById('summaryStats');
+    console.log('summaryStats element:', summaryStats);
+    
+    if (!summaryStats) {
+        console.error('summaryStats element not found!');
+        return;
+    }
+    
+    if (!summary) {
+        console.error('No summary data provided!');
+        return;
+    }
+    
+    // Check if all required fields exist
+    const requiredFields = ['min_pressure', 'max_pressure', 'mean_pressure', 'std_pressure', 'total_time', 'data_points'];
+    const missingFields = requiredFields.filter(field => !(field in summary));
+    if (missingFields.length > 0) {
+        console.error('Missing fields in summary:', missingFields);
+        return;
+    }
     
     const stats = [
-        { label: 'Min Pressure', value: summary.min_pressure.toFixed(3), unit: 'Torr', icon: 'fas fa-arrow-down' },
-        { label: 'Max Pressure', value: summary.max_pressure.toFixed(3), unit: 'Torr', icon: 'fas fa-arrow-up' },
-        { label: 'Mean Pressure', value: summary.mean_pressure.toFixed(3), unit: 'Torr', icon: 'fas fa-chart-line' },
-        { label: 'Std Deviation', value: summary.std_pressure.toFixed(3), unit: 'Torr', icon: 'fas fa-chart-bar' },
+        { label: 'Min Pressure', value: summary.min_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-arrow-down' },
+        { label: 'Max Pressure', value: summary.max_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-arrow-up' },
+        { label: 'Mean Pressure', value: summary.mean_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-chart-line' },
+        { label: 'Std Deviation', value: summary.std_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-chart-bar' },
         { label: 'Total Time', value: summary.total_time.toFixed(1), unit: 'min', icon: 'fas fa-clock' },
         { label: 'Data Points', value: summary.data_points.toLocaleString(), unit: '', icon: 'fas fa-database' }
     ];
     
-    summaryStats.innerHTML = stats.map(stat => `
+    console.log('Generated stats:', stats);
+    
+    const html = stats.map(stat => `
         <div class="col-md-4 col-lg-2 mb-3">
             <div class="stat-card">
                 <i class="${stat.icon} fa-2x text-primary mb-2"></i>
@@ -151,6 +174,10 @@ function displaySummaryStats(summary) {
             </div>
         </div>
     `).join('');
+    
+    console.log('Generated HTML:', html);
+    summaryStats.innerHTML = html;
+    console.log('Summary stats updated successfully');
 }
 
 function displayPressurePlot(plotJson) {
@@ -166,14 +193,18 @@ function displayPressurePlot(plotJson) {
 function displayDataTable(data) {
     const tableBody = document.getElementById('dataTableBody');
     
-    tableBody.innerHTML = data.map(row => `
-        <tr>
-            <td>${row.retention_time.toFixed(2)}</td>
-            <td>${row.pressure.toFixed(4)}</td>
-            <td>${row.pressure_mbar.toFixed(4)}</td>
-            <td>${row.pressure_pa.toFixed(2)}</td>
-        </tr>
-    `).join('');
+    tableBody.innerHTML = data.map(row => {
+        const pressure_bar = row.pressure_mbar * 0.001; // Convert mbar to bar
+        return `
+            <tr>
+                <td>${row.retention_time.toFixed(2)}</td>
+                <td>${pressure_bar.toFixed(6)}</td>
+                <td>${row.pressure_mbar.toFixed(4)}</td>
+                <td>${row.pressure.toFixed(4)}</td>
+                <td>${row.pressure_pa.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function handlePressureAtTime(event) {
@@ -223,17 +254,21 @@ function displayPressureResult(pressureInfo) {
     
     pressureDetails.innerHTML = `
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <strong>Retention Time:</strong><br>
                 ${pressureInfo.retention_time.toFixed(2)} minutes
             </div>
-            <div class="col-md-4">
-                <strong>Pressure (Torr):</strong><br>
-                ${pressureInfo.pressure_torr.toFixed(4)}
+            <div class="col-md-3">
+                <strong>Pressure (bar):</strong><br>
+                ${pressureInfo.pressure_bar.toFixed(6)}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <strong>Pressure (mbar):</strong><br>
                 ${pressureInfo.pressure_mbar.toFixed(4)}
+            </div>
+            <div class="col-md-3">
+                <strong>Pressure (Torr):</strong><br>
+                ${pressureInfo.pressure_torr.toFixed(4)}
             </div>
         </div>
         <div class="row mt-2">

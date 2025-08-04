@@ -244,8 +244,10 @@ class ThermoRawAnalyzer:
         time_diff = np.abs(self.data['retention_time'] - retention_time)
         if np.min(time_diff) <= tolerance:
             closest_idx = np.argmin(time_diff)
+            pressure_bar = self.data.iloc[closest_idx]['pressure_mbar'] * 0.001
             return {
                 'retention_time': self.data.iloc[closest_idx]['retention_time'],
+                'pressure_bar': pressure_bar,
                 'pressure_torr': self.data.iloc[closest_idx]['pressure'],
                 'pressure_mbar': self.data.iloc[closest_idx]['pressure_mbar'],
                 'pressure_pa': self.data.iloc[closest_idx]['pressure_pa']
@@ -291,32 +293,35 @@ def upload_file():
             analyzer = ThermoRawAnalyzer(filepath)
             pressure_data = analyzer.get_pressure_profile()
             
+            # Convert pressure to bar (1 mbar = 0.001 bar)
+            pressure_bar = pressure_data['pressure_mbar'] * 0.001
+            
             # Create plot
             fig = go.Figure()
             fig.add_trace(go.Scatter(
                 x=pressure_data['retention_time'],
-                y=pressure_data['pressure'],
+                y=pressure_bar,
                 mode='lines',
-                name='Pressure (Torr)',
+                name='Pressure (bar)',
                 line=dict(color='blue', width=2)
             ))
             
             fig.update_layout(
                 title='Pressure Profile Over Time',
                 xaxis_title='Retention Time (minutes)',
-                yaxis_title='Pressure (Torr)',
+                yaxis_title='Pressure (bar)',
                 template='plotly_white',
                 height=500
             )
             
             plot_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
             
-            # Get summary statistics
+            # Get summary statistics in bar
             summary = {
-                'min_pressure': float(pressure_data['pressure'].min()),
-                'max_pressure': float(pressure_data['pressure'].max()),
-                'mean_pressure': float(pressure_data['pressure'].mean()),
-                'std_pressure': float(pressure_data['pressure'].std()),
+                'min_pressure': float(pressure_bar.min()),
+                'max_pressure': float(pressure_bar.max()),
+                'mean_pressure': float(pressure_bar.mean()),
+                'std_pressure': float(pressure_bar.std()),
                 'total_time': float(pressure_data['retention_time'].max()),
                 'data_points': len(pressure_data)
             }
@@ -381,7 +386,14 @@ def export_data():
     
     try:
         analyzer = ThermoRawAnalyzer(filepath)
-        pressure_data = analyzer.get_pressure_profile()
+        pressure_data = analyzer.get_pressure_profile().copy()
+        
+        # Add pressure in bar units
+        pressure_data['pressure_bar'] = pressure_data['pressure_mbar'] * 0.001
+        
+        # Reorder columns to put pressure_bar first after retention_time
+        cols = ['retention_time', 'pressure_bar'] + [col for col in pressure_data.columns if col not in ['retention_time', 'pressure_bar']]
+        pressure_data = pressure_data[cols]
         
         if format_type == 'csv':
             output = BytesIO()
