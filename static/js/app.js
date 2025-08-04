@@ -108,6 +108,9 @@ async function handleFileUpload(event) {
 }
 
 function displayResults(result) {
+    console.log('displayResults called with:', result);
+    console.log('result.summary:', result.summary);
+    
     // Hide welcome message and show results
     document.getElementById('welcomeMessage').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'block';
@@ -117,6 +120,7 @@ function displayResults(result) {
     document.getElementById('exportCard').style.display = 'block';
     
     // Display summary statistics
+    console.log('About to call displaySummaryStats with:', result.summary);
     displaySummaryStats(result.summary);
     
     // Display pressure plot
