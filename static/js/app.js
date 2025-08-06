@@ -120,6 +120,11 @@ async function handleFileUpload(event) {
             currentFilename = result.filename;
             displayResults(result);
             showMessage(`File uploaded and analyzed successfully! (${fileSizeMB} MB)`, 'success');
+            
+            // Force complete page reload to ensure fresh data
+            setTimeout(() => {
+                window.location.reload(true); // Force reload from server
+            }, 1000);
         } else {
             showMessage(result.error || 'Upload failed.', 'error');
         }
@@ -183,6 +188,12 @@ function clearCachedData() {
         });
     }
     
+    // Clear localStorage and sessionStorage
+    if (typeof(Storage) !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
+    }
+    
     // Force reload of static assets on next request
     const timestamp = Date.now();
     const links = document.querySelectorAll('link[rel="stylesheet"]');
@@ -190,6 +201,13 @@ function clearCachedData() {
         const href = link.href.split('?')[0];
         link.href = href + '?v=' + timestamp;
     });
+    
+    // Add cache-busting to current page
+    if (window.history && window.history.replaceState) {
+        const url = new URL(window.location);
+        url.searchParams.set('v', timestamp);
+        window.history.replaceState({}, '', url);
+    }
 }
 
 function displaySummaryStats(summary) {

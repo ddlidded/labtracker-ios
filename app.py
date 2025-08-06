@@ -263,7 +263,13 @@ class ThermoRawAnalyzer:
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    import time
+    return render_template('index.html', timestamp=int(time.time()))
+
+@app.route('/test_data')
+def test_data():
+    """Test page to directly verify API data"""
+    return render_template('test_data.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
