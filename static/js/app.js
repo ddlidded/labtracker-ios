@@ -2,6 +2,21 @@
 
 let currentFilename = null;
 
+// Helper function to format pressure values appropriately
+function formatPressure(value) {
+    if (value === 0) return '0.000000';
+    if (value < 1e-6) {
+        // Use scientific notation for very small values
+        return value.toExponential(2);
+    } else if (value < 0.001) {
+        // Use 8 decimal places for small values
+        return value.toFixed(8);
+    } else {
+        // Use 6 decimal places for normal values
+        return value.toFixed(6);
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
@@ -20,6 +35,18 @@ function initializeEventListeners() {
     // File input change
     const fileInput = document.getElementById('fileInput');
     fileInput.addEventListener('change', handleFileSelection);
+    
+    // Records per page selector
+    const recordsPerPageSelect = document.getElementById('recordsPerPage');
+    if (recordsPerPageSelect) {
+        recordsPerPageSelect.addEventListener('change', function() {
+            if (currentFilename) {
+                recordsPerPage = parseInt(this.value);
+                currentPage = 1;
+                loadPaginatedData(currentPage, recordsPerPage);
+            }
+        });
+    }
 }
 
 function handleFileSelection(event) {
@@ -79,6 +106,11 @@ async function handleFileUpload(event) {
         // For large files, show more detailed progress
         const response = await fetch('/upload', {
             method: 'POST',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            },
             body: formData
         });
         
@@ -111,6 +143,9 @@ function displayResults(result) {
     console.log('displayResults called with:', result);
     console.log('result.summary:', result.summary);
     
+    // Clear any cached data
+    clearCachedData();
+    
     // Hide welcome message and show results
     document.getElementById('welcomeMessage').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'block';
@@ -126,11 +161,35 @@ function displayResults(result) {
     // Display pressure plot
     displayPressurePlot(result.plot);
     
-    // Display data table
-    displayDataTable(result.data);
+    // Store current filename for other operations
+    currentFilename = result.filename;
+    
+    // Load first page of data with pagination with forced refresh
+    currentPage = 1;
+    recordsPerPage = parseInt(document.getElementById('recordsPerPage').value) || 50;
+    loadPaginatedData(currentPage, recordsPerPage);
     
     // Add fade-in animation
     document.getElementById('resultsSection').classList.add('fade-in');
+}
+
+function clearCachedData() {
+    // Clear any browser cached data
+    if ('caches' in window) {
+        caches.keys().then(function(names) {
+            names.forEach(function(name) {
+                caches.delete(name);
+            });
+        });
+    }
+    
+    // Force reload of static assets on next request
+    const timestamp = Date.now();
+    const links = document.querySelectorAll('link[rel="stylesheet"]');
+    links.forEach(link => {
+        const href = link.href.split('?')[0];
+        link.href = href + '?v=' + timestamp;
+    });
 }
 
 function displaySummaryStats(summary) {
@@ -158,10 +217,10 @@ function displaySummaryStats(summary) {
     }
     
     const stats = [
-        { label: 'Min Pressure', value: summary.min_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-arrow-down' },
-        { label: 'Max Pressure', value: summary.max_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-arrow-up' },
-        { label: 'Mean Pressure', value: summary.mean_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-chart-line' },
-        { label: 'Std Deviation', value: summary.std_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-chart-bar' },
+        { label: 'Min Pressure', value: formatPressure(summary.min_pressure), unit: 'bar', icon: 'fas fa-arrow-down' },
+        { label: 'Max Pressure', value: formatPressure(summary.max_pressure), unit: 'bar', icon: 'fas fa-arrow-up' },
+        { label: 'Mean Pressure', value: formatPressure(summary.mean_pressure), unit: 'bar', icon: 'fas fa-chart-line' },
+        { label: 'Std Deviation', value: formatPressure(summary.std_pressure), unit: 'bar', icon: 'fas fa-chart-bar' },
         { label: 'Total Time', value: summary.total_time.toFixed(1), unit: 'min', icon: 'fas fa-clock' },
         { label: 'Data Points', value: summary.data_points.toLocaleString(), unit: '', icon: 'fas fa-database' }
     ];
@@ -194,6 +253,12 @@ function displayPressurePlot(plotJson) {
     });
 }
 
+// Pagination variables
+let currentPage = 1;
+let recordsPerPage = 50;
+let totalPages = 1;
+let totalRecords = 0;
+
 function displayDataTable(data) {
     const tableBody = document.getElementById('dataTableBody');
     
@@ -202,13 +267,138 @@ function displayDataTable(data) {
         return `
             <tr>
                 <td>${row.retention_time.toFixed(2)}</td>
-                <td>${pressure_bar.toFixed(6)}</td>
+                <td>${formatPressure(pressure_bar)}</td>
                 <td>${row.pressure_mbar.toFixed(4)}</td>
                 <td>${row.pressure.toFixed(4)}</td>
                 <td>${row.pressure_pa.toFixed(2)}</td>
             </tr>
         `;
     }).join('');
+}
+
+async function loadPaginatedData(page = 1, perPage = 50) {
+    if (!currentFilename) {
+        console.error('No filename available for pagination');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/get_paginated_data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            },
+            body: JSON.stringify({
+                filename: currentFilename,
+                page: page,
+                per_page: perPage,
+                timestamp: Date.now() // Cache-busting parameter
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displayDataTable(result.data);
+            updatePaginationControls(result.pagination);
+            showPaginationContainer();
+        } else {
+            showMessage('Error loading data: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading paginated data:', error);
+        showMessage('Error loading paginated data: ' + error.message, 'error');
+    }
+}
+
+function updatePaginationControls(pagination) {
+    currentPage = pagination.page;
+    totalPages = pagination.total_pages;
+    totalRecords = pagination.total_records;
+    recordsPerPage = pagination.per_page;
+    
+    // Update pagination info
+    const startRecord = (currentPage - 1) * recordsPerPage + 1;
+    const endRecord = Math.min(currentPage * recordsPerPage, totalRecords);
+    document.getElementById('paginationInfo').textContent = 
+        `Showing ${startRecord}-${endRecord} of ${totalRecords} records`;
+    
+    // Update pagination controls
+    const paginationControls = document.getElementById('paginationControls');
+    paginationControls.innerHTML = '';
+    
+    // Previous button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${!pagination.has_prev ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>`;
+    paginationControls.appendChild(prevLi);
+    
+    // Page numbers
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        const firstLi = document.createElement('li');
+        firstLi.className = 'page-item';
+        firstLi.innerHTML = '<a class="page-link" href="#" data-page="1">1</a>';
+        paginationControls.appendChild(firstLi);
+        
+        if (startPage > 2) {
+            const ellipsisLi = document.createElement('li');
+            ellipsisLi.className = 'page-item disabled';
+            ellipsisLi.innerHTML = '<span class="page-link">...</span>';
+            paginationControls.appendChild(ellipsisLi);
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const pageLi = document.createElement('li');
+        pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        pageLi.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+        paginationControls.appendChild(pageLi);
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const ellipsisLi = document.createElement('li');
+            ellipsisLi.className = 'page-item disabled';
+            ellipsisLi.innerHTML = '<span class="page-link">...</span>';
+            paginationControls.appendChild(ellipsisLi);
+        }
+        
+        const lastLi = document.createElement('li');
+        lastLi.className = 'page-item';
+        lastLi.innerHTML = `<a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a>`;
+        paginationControls.appendChild(lastLi);
+    }
+    
+    // Next button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${!pagination.has_next ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>`;
+    paginationControls.appendChild(nextLi);
+    
+    // Add click event listeners
+    paginationControls.addEventListener('click', handlePaginationClick);
+}
+
+function handlePaginationClick(event) {
+    event.preventDefault();
+    
+    if (event.target.classList.contains('page-link') && !event.target.closest('.disabled')) {
+        const page = parseInt(event.target.getAttribute('data-page'));
+        if (page && page !== currentPage) {
+            loadPaginatedData(page, recordsPerPage);
+        }
+    }
+}
+
+function showPaginationContainer() {
+    const container = document.getElementById('paginationContainer');
+    container.style.display = 'flex';
 }
 
 async function handlePressureAtTime(event) {

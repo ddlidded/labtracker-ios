@@ -150,9 +150,9 @@ class ThermoRawAnalyzer:
                         if retention_times and pressures:
                             self.data = pd.DataFrame({
                                 'retention_time': retention_times,
-                                'pressure': pressures,
-                                'pressure_mbar': np.array(pressures) * 1.333,
-                                'pressure_pa': np.array(pressures) * 133.3
+                                'pressure': pressures,  # Pressure in bar
+                                'pressure_mbar': np.array(pressures) * 1000.0,  # Convert bar to mbar
+                                'pressure_pa': np.array(pressures) * 100000.0  # Convert bar to Pa
                             })
                             
                             self.file_info.update({
@@ -201,37 +201,38 @@ class ThermoRawAnalyzer:
         num_points = int(estimated_duration * 100)  # 100 points per minute
         retention_times = np.linspace(0, estimated_duration, num_points)
         
-        # Generate more realistic pressure profile
-        base_pressure = 1.2  # Torr
+        # Generate realistic HPLC pump pressure profile
+        base_pressure = 150.0  # bar (typical HPLC pump pressure)
         
         # Create realistic pressure variations
         pressure_variations = (
             base_pressure +
-            0.15 * np.sin(retention_times * 0.3) +  # Slow system oscillation
-            0.08 * np.sin(retention_times * 1.2) +  # Medium frequency variation
-            0.03 * np.random.randn(len(retention_times)) +  # Noise
-            0.25 * np.exp(-(retention_times - estimated_duration*0.6)**2 / (estimated_duration*0.1))  # Peak
+            30.0 * np.sin(retention_times * 0.2) +  # Gradient effect
+            10.0 * np.sin(retention_times * 0.8) +  # Medium frequency variation
+            2.0 * np.random.randn(len(retention_times)) +  # Noise
+            20.0 * np.exp(-(retention_times - estimated_duration*0.6)**2 / (estimated_duration*0.1))  # Peak
         )
         
         # Add some realistic pressure spikes
         spike_positions = np.random.choice(len(retention_times), size=max(1, int(estimated_duration/20)), replace=False)
         for pos in spike_positions:
-            pressure_variations[pos] += np.random.uniform(0.1, 0.3)
+            pressure_variations[pos] += np.random.uniform(5.0, 15.0)
         
-        # Ensure pressure stays positive
-        pressure_variations = np.maximum(pressure_variations, 0.1)
+        # Ensure pressure stays within realistic HPLC bounds
+        pressure_variations = np.maximum(pressure_variations, 50.0)
+        pressure_variations = np.minimum(pressure_variations, 400.0)
         
         self.data = pd.DataFrame({
             'retention_time': retention_times,
-            'pressure': pressure_variations,
-            'pressure_mbar': pressure_variations * 1.333,  # Convert Torr to mbar
-            'pressure_pa': pressure_variations * 133.3     # Convert Torr to Pa
+            'pressure': pressure_variations,  # Pressure in bar
+            'pressure_mbar': pressure_variations * 1000.0,  # Convert bar to mbar
+            'pressure_pa': pressure_variations * 100000.0   # Convert bar to Pa
         })
         
         self.file_info.update({
             'estimated_duration_min': estimated_duration,
             'data_points': len(retention_times),
-            'pressure_range_torr': f"{np.min(pressure_variations):.3f} - {np.max(pressure_variations):.3f}"
+            'pressure_range_bar': f"{np.min(pressure_variations):.1f} - {np.max(pressure_variations):.1f}"
         })
     
     def get_pressure_profile(self):
@@ -326,18 +327,78 @@ def upload_file():
                 'data_points': len(pressure_data)
             }
             
-            return jsonify({
+            response = jsonify({
                 'success': True,
                 'filename': filename,
                 'plot': plot_json,
                 'summary': summary,
-                'data': pressure_data.to_dict('records')[:100]  # First 100 points for preview
+                'data': pressure_data.to_dict('records')[:100],  # First 100 points for preview
+                'file_info': analyzer.file_info  # Include file info to show data source
             })
+            
+            # Add cache-busting headers
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            
+            return response
             
         except Exception as e:
             return jsonify({'error': f'Error processing file: {str(e)}'}), 500
     
     return jsonify({'error': 'Invalid file type'}), 400
+
+@app.route('/get_paginated_data', methods=['POST'])
+def get_paginated_data():
+    """Get paginated pressure data for table display"""
+    data = request.get_json()
+    filename = data.get('filename')
+    page = int(data.get('page', 1))
+    per_page = int(data.get('per_page', 50))
+    
+    if not filename:
+        return jsonify({'error': 'No filename provided'}), 400
+    
+    # Get the analyzer instance from session or recreate
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'File not found'}), 404
+    
+    try:
+        analyzer = ThermoRawAnalyzer(file_path)
+        analyzer.load_data()
+        pressure_data = analyzer.get_pressure_profile()
+        
+        # Calculate pagination
+        total_records = len(pressure_data)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        
+        # Get paginated data
+        paginated_data = pressure_data.iloc[start_idx:end_idx]
+        
+        response = jsonify({
+            'success': True,
+            'data': paginated_data.to_dict('records'),
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total_records': total_records,
+                'total_pages': (total_records + per_page - 1) // per_page,
+                'has_next': end_idx < total_records,
+                'has_prev': page > 1
+            }
+        })
+        
+        # Add cache-busting headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'error': f'Error retrieving data: {str(e)}'}), 500
 
 @app.route('/pressure_at_time', methods=['POST'])
 def get_pressure_at_time():

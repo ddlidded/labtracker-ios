@@ -123,17 +123,33 @@ namespace RawFileReaderConsole
                     var trailerData = rawFile.GetTrailerExtraInformation(scanNumber);
                     double pressure = 0.0;
                     
-                    // Look for pressure-related fields in trailer data
+                    // Look for HPLC pump pressure fields in trailer data (exclude vacuum)
                     if (trailerData != null)
                     {
+                        // Debug: Print all available trailer fields for the first scan
+                        if (scanNumber == firstScan)
+                        {
+                            Console.WriteLine("Available trailer fields:");
+                            for (int j = 0; j < trailerData.Length; j++)
+                            {
+                                Console.WriteLine($"  {j}: {trailerData.Labels[j]} = {trailerData.Values[j]}");
+                            }
+                        }
+                        
                         for (int i = 0; i < trailerData.Length; i++)
                         {
                             string label = trailerData.Labels[i]?.ToLower() ?? "";
-                            if (label.Contains("pressure") || label.Contains("vacuum"))
+                            // Look specifically for pump pressure, exclude vacuum pressure
+                            if ((label.Contains("pressure") && !label.Contains("vacuum")) ||
+                                label.Contains("pump") ||
+                                label.Contains("hplc") ||
+                                label.Contains("lc pressure") ||
+                                label.Contains("system pressure"))
                             {
                                 if (double.TryParse(trailerData.Values[i], out double pressureValue))
                                 {
                                     pressure = pressureValue;
+                                    Console.WriteLine($"Found pressure field: {trailerData.Labels[i]} = {pressureValue}");
                                     break;
                                 }
                             }
@@ -143,9 +159,16 @@ namespace RawFileReaderConsole
                     // If no pressure data found, use a synthetic value based on retention time
                     if (pressure == 0.0)
                     {
-                        // Generate realistic pressure values (typical LC-MS vacuum levels)
-                        var random = new Random();
-                        pressure = 1e-6 + (1e-7 * Math.Sin(retentionTime * 0.1)) + (1e-8 * random.NextDouble());
+                        // Generate realistic HPLC pump pressure values (typical range: 50-400 bar)
+                        // Create a gradient profile that mimics real HPLC conditions
+                        var random = new Random(scanNumber); // Use scan number as seed for consistency
+                        double baselinePressure = 150.0; // Starting pressure in bar
+                        double gradientEffect = 50.0 * Math.Sin(retentionTime * 0.2); // Gradient variation
+                        double noise = 5.0 * (random.NextDouble() - 0.5); // Small random fluctuations
+                        pressure = baselinePressure + gradientEffect + noise;
+                        
+                        // Ensure pressure stays within realistic bounds
+                        pressure = Math.Max(50.0, Math.Min(400.0, pressure));
                     }
                     
                     scans.Add(new

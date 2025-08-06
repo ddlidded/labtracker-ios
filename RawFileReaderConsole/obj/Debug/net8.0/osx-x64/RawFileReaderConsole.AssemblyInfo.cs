@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RawFileReaderConsole")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d0ec1606ca53e9b18a127f5da53066f3b8abd680")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+12e879451f7ce6766856f159b6e19e4fbc64c5f2")]
 [assembly: System.Reflection.AssemblyProductAttribute("RawFileReaderConsole")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RawFileReaderConsole")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
