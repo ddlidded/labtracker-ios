@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Test</title>
+</head>
+<body>
+    <div id="summaryStats"></div>
+    
+    <script>
+        // Test the displaySummaryStats function with sample data
+        function displaySummaryStats(summary) {
+            const summaryStats = document.getElementById('summaryStats');
+            
+            const stats = [
+                { label: 'Min Pressure', value: summary.min_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-arrow-down' },
+                { label: 'Max Pressure', value: summary.max_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-arrow-up' },
+                { label: 'Mean Pressure', value: summary.mean_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-chart-line' },
+                { label: 'Std Deviation', value: summary.std_pressure.toFixed(6), unit: 'bar', icon: 'fas fa-chart-bar' },
+                { label: 'Total Time', value: summary.total_time.toFixed(1), unit: 'min', icon: 'fas fa-clock' },
+                { label: 'Data Points', value: summary.data_points.toLocaleString(), unit: '', icon: 'fas fa-database' }
+            ];
+            
+            summaryStats.innerHTML = stats.map(stat => `
+                <div class="col-md-4 col-lg-2 mb-3">
+                    <div class="stat-card">
+                        <i class="${stat.icon} fa-2x text-primary mb-2"></i>
+                        <div class="stat-value">${stat.value}</div>
+                        <div class="stat-label">${stat.label}</div>
+                        <small class="text-muted">${stat.unit}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Test with sample data from the debug output
+        const testSummary = {
+            'data_points': 1000,
+            'max_pressure': 0.002309240879680716,
+            'mean_pressure': 0.0017932717214243846,
+            'min_pressure': 0.0014433164005730793,
+            'std_pressure': 0.00018532272337726217,
+            'total_time': 10.0
+        };
+        
+        console.log('Testing displaySummaryStats with:', testSummary);
+        
+        try {
+            displaySummaryStats(testSummary);
+            console.log('✅ displaySummaryStats executed successfully');
+            console.log('Generated HTML:', document.getElementById('summaryStats').innerHTML);
+        } catch (error) {
+            console.error('❌ Error in displaySummaryStats:', error);
+        }
+    </script>
+</body>
+</html>

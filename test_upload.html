@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload</title>
+</head>
+<body>
+    <h1>Testing File Upload</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testUpload() {
+            console.log('Starting test upload...');
+            
+            try {
+                // Create a test file
+                const testContent = 'test raw file content';
+                const blob = new Blob([testContent], { type: 'application/octet-stream' });
+                const file = new File([blob], 'test.raw', { type: 'application/octet-stream' });
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                console.log('Uploading file...');
+                
+                // Upload to Flask app
+                const response = await fetch('http://localhost:9847/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Upload successful!');
+                    console.log('Full result:', result);
+                    console.log('Result keys:', Object.keys(result));
+                    
+                    if (result.summary) {
+                        console.log('Summary found:', result.summary);
+                        console.log('Summary keys:', Object.keys(result.summary));
+                        
+                        // Test the summary data
+                        const summary = result.summary;
+                        console.log('Pressure values:');
+                        console.log('  Min:', summary.min_pressure, 'bar');
+                        console.log('  Max:', summary.max_pressure, 'bar');
+                        console.log('  Mean:', summary.mean_pressure, 'bar');
+                        console.log('  Std:', summary.std_pressure, 'bar');
+                        console.log('  Total time:', summary.total_time, 'min');
+                        console.log('  Data points:', summary.data_points);
+                        
+                        // Check if values are in correct units
+                        if (summary.min_pressure < 0.01) {
+                            console.log('✓ Pressure values appear to be in bar units');
+                        } else {
+                            console.log('✗ Pressure values might still be in wrong units');
+                        }
+                        
+                        document.getElementById('results').innerHTML = `
+                            <h2>Test Results</h2>
+                            <p><strong>Status:</strong> Success</p>
+                            <p><strong>Min Pressure:</strong> ${summary.min_pressure.toFixed(6)} bar</p>
+                            <p><strong>Max Pressure:</strong> ${summary.max_pressure.toFixed(6)} bar</p>
+                            <p><strong>Mean Pressure:</strong> ${summary.mean_pressure.toFixed(6)} bar</p>
+                            <p><strong>Std Pressure:</strong> ${summary.std_pressure.toFixed(6)} bar</p>
+                            <p><strong>Total Time:</strong> ${summary.total_time} min</p>
+                            <p><strong>Data Points:</strong> ${summary.data_points}</p>
+                        `;
+                    } else {
+                        console.log('✗ No summary in result!');
+                        document.getElementById('results').innerHTML = '<p>Error: No summary data found</p>';
+                    }
+                } else {
+                    console.log('Upload failed:', response.statusText);
+                    const errorText = await response.text();
+                    console.log('Error details:', errorText);
+                    document.getElementById('results').innerHTML = `<p>Error: ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                console.error('Test failed:', error);
+                document.getElementById('results').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testUpload);
+    </script>
+</body>
+</html>

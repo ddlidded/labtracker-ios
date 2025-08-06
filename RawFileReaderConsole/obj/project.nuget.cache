@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "8GskJKP0RkQ=",
+  "success": true,
+  "projectFilePath": "/Users/eddykapelczak/Documents/GitHub/labtracker-ios/RawFileReaderConsole/RawFileReaderConsole.csproj",
+  "expectedPackageFiles": [
+    "/Users/eddykapelczak/.nuget/packages/microsoft.net.illink.tasks/8.0.15/microsoft.net.illink.tasks.8.0.15.nupkg.sha512",
+    "/Users/eddykapelczak/.nuget/packages/microsoft.netcore.app.ref/8.0.15/microsoft.netcore.app.ref.8.0.15.nupkg.sha512",
+    "/Users/eddykapelczak/.nuget/packages/microsoft.netcore.app.runtime.osx-x64/8.0.15/microsoft.netcore.app.runtime.osx-x64.8.0.15.nupkg.sha512",
+    "/Users/eddykapelczak/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.15/microsoft.aspnetcore.app.ref.8.0.15.nupkg.sha512",
+    "/Users/eddykapelczak/.nuget/packages/microsoft.aspnetcore.app.runtime.osx-x64/8.0.15/microsoft.aspnetcore.app.runtime.osx-x64.8.0.15.nupkg.sha512",
+    "/Users/eddykapelczak/.nuget/packages/microsoft.netcore.app.host.osx-x64/8.0.15/microsoft.netcore.app.host.osx-x64.8.0.15.nupkg.sha512"
+  ],
+  "logs": []
+}
